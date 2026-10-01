@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Route Optimizer & Navigation Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            /* Palette Requirements: Primary #2563EB, Secondary #0EA5E9, Accent #10B981, Background #F8FAFC */
+            --primary: #2563EB;
+            --primary-hover: #1d4ed8;
+            --secondary: #0EA5E9;
+            --accent: #10B981;
+            --accent-glow: rgba(16, 185, 129, 0.45);
+            --route-line-color: #0ea5e9;
+            
+            /* Dark Mode Theme Tokens */
+            --bg-body: #0b1120;
+            --card-bg: rgba(17, 24, 39, 0.72);
+            --card-border: rgba(255, 255, 255, 0.12);
+            --card-border-hover: rgba(37, 99, 235, 0.45);
+            --card-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.65), 0 0 45px rgba(37, 99, 235, 0.16);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --input-bg: rgba(15, 23, 42, 0.65);
+            --input-border: rgba(51, 65, 85, 0.85);
+            --input-border-focus: #2563EB;
+            --dropdown-bg: rgba(17, 24, 39, 0.96);
+            --dropdown-hover: rgba(37, 99, 235, 0.18);
+            --topbar-bg: rgba(17, 24, 39, 0.65);
+            --topbar-border: rgba(255, 255, 255, 0.1);
+            
+            /* Overlay Gradients & Map Blur Filter */
+            --map-blur: blur(12px);
+            --map-filter: brightness(0.9) contrast(1.15);
+            --overlay-gradient: radial-gradient(ellipse at 50% 40%, rgba(11, 17, 32, 0.52) 0%, rgba(11, 17, 32, 0.82) 100%),
+                                linear-gradient(180deg, rgba(11, 17, 32, 0.6) 0%, rgba(11, 17, 32, 0.85) 100%);
+            --overlay-opacity: 0.6;
+            --glow-intensity: 0.9;
+        }
+
+        body.light-theme {
+            /* Light Mode Theme Tokens */
+            --bg-body: #F8FAFC;
+            --card-bg: rgba(255, 255, 255, 0.82);
+            --card-border: rgba(226, 232, 240, 0.9);
+            --card-border-hover: rgba(37, 99, 235, 0.5);
+            --card-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.12), 0 0 35px rgba(37, 99, 235, 0.08);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --input-bg: rgba(248, 250, 252, 0.82);
+            --input-border: #cbd5e1;
+            --input-border-focus: #2563EB;
+            --dropdown-bg: rgba(255, 255, 255, 0.98);
+            --dropdown-hover: #f1f5f9;
+            --topbar-bg: rgba(255, 255, 255, 0.75);
+            --topbar-border: rgba(226, 232, 240, 0.8);
+            
+            /* Overlay Gradients & Map Blur Filter in Light Mode */
+            --map-blur: blur(14px);
+            --map-filter: brightness(1.05) contrast(1.05);
+            --overlay-gradient: radial-gradient(ellipse at 50% 40%, rgba(248, 250, 252, 0.65) 0%, rgba(241, 245, 249, 0.88) 100%),
+                                linear-gradient(180deg, rgba(248, 250, 252, 0.6) 0%, rgba(241, 245, 249, 0.82) 100%);
+            --overlay-opacity: 0.6;
+            --glow-intensity: 0.6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        html, body {
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            position: relative;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* ========================================================
+           HERO SECTION BACKGROUND (Realistic Aerial Map + Live Path)
+           ======================================================== */
+        .hero-bg-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -10;
+            overflow: hidden;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        /* Living Aerial Map Canvas with Depth & Slow Ambient Zoom */
+        .hero-map-canvas {
+            position: absolute;
+            inset: -6%;
+            width: 112%;
+            height: 112%;
+            background-image: url('/static/images/hero_map_bg.jpg');
+            background-size: cover;
+            background-position: center 48%;
+            filter: var(--map-blur) var(--map-filter);
+            transform-origin: center center;
+            animation: mapLivingDepth 32s ease-in-out infinite alternate;
+            will-change: transform;
+        }
+
+        @keyframes mapLivingDepth {
+            0% {
+                transform: scale(1) translate(0, 0);
+            }
+            50% {
+                transform: scale(1.06) translate(-1.2%, -0.8%);
+            }
+            100% {
+                transform: scale(1.02) translate(0.8%, 1%);
+            }
+        }
+
+        /* Subtle Road Grid & Radar Telemetry HUD Layer */
+        .hero-hud-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        /* Glowing Animated SVG Navigation Route Path (slightly brighter than map) */
+        .hero-route-svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            inset: 0;
+            opacity: 0.85;
+            mix-blend-mode: screen;
+        }
+
+        .route-svg-glow {
+            fill: none;
+            stroke: #0ea5e9;
+            stroke-width: 12px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.6;
+            filter: blur(10px);
+        }
+
+        .route-svg-core {
+            fill: none;
+            stroke: url(#routeVectorGradient);
+            stroke-width: 4px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 8 6;
+            animation: routeDashPulse 25s linear infinite;
+        }
+
+        @keyframes routeDashPulse {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+
+        /* Waypoint Beacons on the Map */
+        .map-beacon {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        .beacon-origin {
+            top: 42%;
+            left: 21%;
+        }
+
+        .beacon-dest {
+            top: 22%;
+            left: 82%;
+        }
+
+        .beacon-pulse {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .beacon-origin .beacon-pulse {
+            background: #10B981;
+            box-shadow: 0 0 16px #10B981, 0 0 32px #10B981;
+        }
+
+        .beacon-dest .beacon-pulse {
+            background: #0EA5E9;
+            box-shadow: 0 0 16px #0EA5E9, 0 0 32px #0EA5E9;
+        }
+
+        .beacon-pulse::after {
+            content: '';
+            position: absolute;
+            inset: -8px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            opacity: 0.8;
+            animation: beaconRadar 2.4s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+        }
+
+        .beacon-origin .beacon-pulse::after {
+            border-color: #10B981;
+        }
+
+        .beacon-dest .beacon-pulse::after {
+            border-color: #0EA5E9;
+        }
+
+        @keyframes beaconRadar {
+            0% {
+                transform: scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2.8);
+                opacity: 0;
+            }
+        }
+
+        .beacon-tag {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 4px 9px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        body.light-theme .beacon-tag {
+            background: rgba(255, 255, 255, 0.85);
+            color: #0f172a;
+            border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Soft Dark / Frost Overlay Gradient for Maximum Readability */
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--overlay-gradient);
+            opacity: var(--overlay-opacity);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            transition: background 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* Subtle Digital Map Grid Overlay */
+        .hero-grid-pattern {
+            position: absolute;
+            inset: 0;
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            opacity: 0.7;
+        }
+
+        body.light-theme .hero-grid-pattern {
+            background-image: 
+                linear-gradient(to right, rgba(15, 23, 42, 0.025) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(15, 23, 42, 0.025) 1px, transparent 1px);
+        }
+
+        /* ========================================================
+           TOP BAR (Glassmorphism Pill Navigation)
+           ======================================================== */
+        .top-bar {
+            width: 100%;
+            max-width: 580px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            z-index: 10;
+        }
+
+        .btn-link {
+            background: var(--topbar-bg);
+            border: 1px solid var(--topbar-border);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: var(--text-main);
+            padding: 9px 15px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-link:hover {
+            border-color: var(--primary);
+            transform: translateY(-1.5px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.18);
+        }
+
+        /* ========================================================
+           CENTER HERO CARD (Smart Route Optimizer Focus)
+           ======================================================== */
+        .main-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            width: 100%;
+            max-width: 580px;
+            padding: 34px;
+            position: relative;
+            z-index: 10;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+        }
+
+        .main-card:hover {
+            border-color: var(--card-border-hover);
+        }
+
+        /* Floating Live Status Badge */
+        .card-status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(37, 99, 235, 0.12);
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: #38bdf8;
+            margin-bottom: 14px;
+        }
+
+        body.light-theme .card-status-chip {
+            background: rgba(37, 99, 235, 0.08);
+            color: #2563eb;
+            border-color: rgba(37, 99, 235, 0.2);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #10B981;
+            box-shadow: 0 0 8px #10B981;
+            animation: pulseDot 2s infinite;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .brand-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(14, 165, 233, 0.2));
+            border: 1px solid rgba(37, 99, 235, 0.35);
+            color: var(--primary);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.3);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .main-card:hover .brand-icon {
+            transform: scale(1.08) rotate(-3deg);
+        }
+
+        .header h1 {
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.6px;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, var(--text-main) 30%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Mode Switcher Tabs */
+        .tabs {
+            display: flex;
+            background: var(--input-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 5px;
+            border-radius: 14px;
+            border: 1px solid var(--card-border);
+            margin-bottom: 18px;
+            gap: 6px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 11px 12px;
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+        }
+
+        /* Transport Mode Selector */
+        .transport-modes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .mode-btn {
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-main);
+            padding: 9px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            font-size: 0.825rem;
+            font-weight: 600;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .mode-btn:hover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .mode-btn.active {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.18);
+            color: var(--primary);
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.2);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.15);
+            border-left: 4px solid #ef4444;
+            color: #f87171;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        body.light-theme .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #dc2626;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrap i.field-icon {
+            position: absolute;
+            left: 14px;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            z-index: 2;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 14px 12px 42px;
+            background: var(--input-bg);
+            border: 1.5px solid var(--input-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 12px;
+            font-size: 0.925rem;
+            font-weight: 500;
+            color: var(--text-main);
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+            background: var(--card-bg);
+        }
+
+        /* Autocomplete Dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            right: 0;
+            background: var(--dropdown-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+            display: none;
+        }
+
+        .autocomplete-item {
+            padding: 11px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.85rem;
+            transition: background 0.15s;
+        }
+
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .autocomplete-item:hover {
+            background: var(--dropdown-hover);
+        }
+
+        .autocomplete-item i {
+            color: var(--primary);
+            margin-top: 2px;
+        }
+
+        /* Waypoints */
+        .waypoint-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+            position: relative;
+        }
+
+        .btn-remove-stop {
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            width: 42px;
+            height: 44px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn-remove-stop:hover {
+            background: rgba(239, 68, 68, 0.25);
+            transform: scale(1.05);
+        }
+
+        .btn-add-stop {
+            width: 100%;
+            padding: 11px;
+            background: var(--input-bg);
+            border: 1.5px dashed var(--input-border);
+            border-radius: 12px;
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            transition: all 0.2s;
+        }
+
+        .btn-add-stop:hover {
+            background: rgba(37, 99, 235, 0.12);
+            border-color: var(--primary);
+        }
+
+        .option-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 14px;
+            background: var(--input-bg);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            cursor: pointer;
+            border: 1px solid var(--input-border);
+            transition: border-color 0.2s;
+        }
+
+        .option-toggle:hover {
+            border-color: var(--primary);
+        }
+
+        .option-toggle input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary);
+        }
+
+        .option-toggle span {
+            font-size: 0.825rem;
+            font-weight: 500;
+        }
+
+        /* Submit Button with High-Impact Gradient & Lift */
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #2563EB 0%, #1d4ed8 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 10px 25px -4px rgba(37, 99, 235, 0.5);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 32px -4px rgba(37, 99, 235, 0.65);
+        }
+
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .gps-status {
+            margin-top: 16px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+        }
+
+        /* Responsive Optimization */
+        @media (max-width: 640px) {
+            body {
+                padding: 16px 12px;
+            }
+            .main-card {
+                padding: 24px 18px;
+                border-radius: 18px;
+            }
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            .map-beacon {
+                display: none; /* Hide floating beacons on small mobile to avoid clutter */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ========================================================
+         HERO SECTION FULL-PAGE BACKGROUND (Realistic City Map & Live Route)
+         ======================================================== -->
+    <div class="hero-bg-container" aria-hidden="true">
+        <!-- Living Map Canvas with subtle drift and depth -->
+        <div class="hero-map-canvas"></div>
+        
+        <!-- Live Map Telemetry & Route Elements Layer -->
+        <div class="hero-hud-layer">
+            <!-- Animated Start Origin Beacon -->
+            <div class="map-beacon beacon-origin">
+                <div class="beacon-pulse"></div>
+                <div class="beacon-tag"><i class="fa-solid fa-circle-dot" style="color: #10B981;"></i> Start Point</div>
+            </div>
+
+            <!-- Animated Destination Beacon -->
+            <div class="map-beacon beacon-dest">
+                <div class="beacon-pulse"></div>
+                <div class="beacon-tag"><i class="fa-solid fa-flag-checkered" style="color: #0EA5E9;"></i> Destination</div>
+            </div>
+
+            <!-- Glowing SVG Navigation Route Line -->
+            <svg class="hero-route-svg" viewBox="0 0 1600 900" preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="routeVectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#10B981" />
+                        <stop offset="25%" stop-color="#2563EB" />
+                        <stop offset="70%" stop-color="#0EA5E9" />
+                        <stop offset="100%" stop-color="#38BDF8" />
+                    </linearGradient>
+                </defs>
+                <path class="route-svg-glow" d="M 336 378 Q 450 395 560 360 T 820 300 T 1150 240 T 1312 198" />
+                <path class="route-svg-core" d="M 336 378 Q 450 395 560 360 T 820 300 T 1150 240 T 1312 198" />
+            </svg>
+        </div>
+
+        <!-- 70-80% Blur & Soft Dark Overlay Gradient for Optimal UI Contrast -->
+        <div class="hero-overlay"></div>
+        <div class="hero-grid-pattern"></div>
+    </div>
+
+    <!-- Navigation Header Bar -->
+    <div class="top-bar">
+        <a href="/guide" class="btn-link">
+            <i class="fa-solid fa-graduation-cap" style="color: #10b981;"></i> A* vs Dijkstra Guide
+        </a>
+        <a href="/visualizer" class="btn-link">
+            <i class="fa-solid fa-microchip" style="color: #3b82f6;"></i> Visualizer Lab
+        </a>
+        <button class="btn-link" onclick="toggleTheme()" id="themeToggleBtn">
+            <i class="fa-solid fa-circle-half-stroke"></i> Mode
+        </button>
+    </div>
+
+    <!-- Main Hero Card (Remains the Centered Hero Focus) -->
+    <div class="main-card">
+        <div class="header">
+            <div class="card-status-chip">
+                <span class="status-dot"></span>
+                <span>Active City Road Network Engine</span>
+            </div>
+            <div>
+                <div class="brand-icon">
+                    <i class="fa-solid fa-route"></i>
+                </div>
+            </div>
+            <h1>Smart Route Optimizer</h1>
+            <p>Road routing, delivery tour optimizer & algorithm playground</p>
+        </div>
+
+        <div class="tabs">
+            <button type="button" class="tab-btn active" id="tabDirect" onclick="setMode('direct')">
+                <i class="fa-solid fa-location-arrow"></i> Direct Navigation
+            </button>
+            <button type="button" class="tab-btn" id="tabMulti" onclick="setMode('multi')">
+                <i class="fa-solid fa-boxes-packing"></i> Multi-Stop Optimizer
+            </button>
+        </div>
+
+        <!-- Transport Mode Selector -->
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block;">Transport Mode</label>
+        <div class="transport-modes">
+            <button type="button" class="mode-btn active" id="modeDriving" onclick="setTransportMode('driving')">
+                <i class="fa-solid fa-car"></i> Driving
+            </button>
+            <button type="button" class="mode-btn" id="modeCycling" onclick="setTransportMode('cycling')">
+                <i class="fa-solid fa-bicycle"></i> Cycling
+            </button>
+            <button type="button" class="mode-btn" id="modeWalking" onclick="setTransportMode('walking')">
+                <i class="fa-solid fa-person-walking"></i> Walking
+            </button>
+        </div>
+
+        {% if error %}
+        <div class="alert-error">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/map" method="post" id="routeForm" autocomplete="off">
+            <input type="hidden" name="latitude" id="latitude">
+            <input type="hidden" name="longitude" id="longitude">
+            <input type="hidden" name="optimize" id="optimizeInput" value="false">
+            <input type="hidden" name="mode" id="modeInput" value="driving">
+
+            <!-- Starting Point with Autocomplete -->
+            <div class="form-group">
+                <label>Starting Point</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-circle-dot field-icon" style="color: #10B981;"></i>
+                    <input type="text" name="source" id="source" placeholder="Using GPS Location (or search address)"
+                        oninput="handleAutocomplete(this, 'sourceDropdown')">
+                </div>
+                <div class="autocomplete-dropdown" id="sourceDropdown"></div>
+            </div>
+
+            <!-- Waypoints Container -->
+            <div id="waypointsSection" style="display: none;">
+                <label>Intermediate Delivery Stops</label>
+                <div id="stopsList"></div>
+                <button type="button" class="btn-add-stop" onclick="addWaypoint()">
+                    <i class="fa-solid fa-plus"></i> Add Delivery Stop
+                </button>
+
+                <label class="option-toggle">
+                    <input type="checkbox" id="tspCheckbox" checked onchange="toggleTsp(this)">
+                    <span>Solve TSP (2-Opt) for shortest delivery sequence</span>
+                </label>
+            </div>
+
+            <!-- Destination with Autocomplete -->
+            <div class="form-group">
+                <label id="destLabel">Destination <span style="color: #ef4444;">*</span></label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-location-dot field-icon" style="color: #ef4444;"></i>
+                    <input type="text" name="destination" id="destination" placeholder="Enter landmark, address or city"
+                        required oninput="handleAutocomplete(this, 'destDropdown')">
+                </div>
+                <div class="autocomplete-dropdown" id="destDropdown"></div>
+            </div>
+
+            <!-- Pathfinding Algorithm Selector -->
+            <div class="form-group" style="margin-top: 14px;">
+                <label><i class="fa-solid fa-microchip"></i> Routing Engine Algorithm</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <button type="button" class="mode-btn active" id="algoAStar" onclick="setAlgorithm('a_star')">
+                        <i class="fa-solid fa-bolt" style="color: #eab308;"></i> A* Search (Heuristic)
+                    </button>
+                    <button type="button" class="mode-btn" id="algoDijkstra" onclick="setAlgorithm('dijkstra')">
+                        <i class="fa-solid fa-network-wired" style="color: #0ea5e9;"></i> Dijkstra
+                    </button>
+                </div>
+                <input type="hidden" name="algorithm" id="algorithmInput" value="a_star">
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fa-solid fa-compass"></i> Calculate Road Route
+            </button>
+        </form>
+
+        <div class="gps-status" id="gpsStatus">
+            <i class="fa-solid fa-spinner fa-spin"></i> Detecting browser GPS coordinates...
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'direct';
+        let currentTransport = 'driving';
+        let waypointCount = 0;
+        let debounceTimer = null;
+
+        function setMode(mode) {
+            currentMode = mode;
+            const tabDirect = document.getElementById('tabDirect');
+            const tabMulti = document.getElementById('tabMulti');
+            const waypointsSec = document.getElementById('waypointsSection');
+            const destLabel = document.getElementById('destLabel');
+            const optimizeInput = document.getElementById('optimizeInput');
+
+            if (mode === 'multi') {
+                tabDirect.classList.remove('active');
+                tabMulti.classList.add('active');
+                waypointsSec.style.display = 'block';
+                destLabel.innerHTML = 'Final Destination <span style="color: #ef4444;">*</span>';
+                optimizeInput.value = document.getElementById('tspCheckbox').checked ? 'true' : 'false';
+                if (waypointCount === 0) addWaypoint();
+            } else {
+                tabMulti.classList.remove('active');
+                tabDirect.classList.add('active');
+                waypointsSec.style.display = 'none';
+                destLabel.innerHTML = 'Destination <span style="color: #ef4444;">*</span>';
+                optimizeInput.value = 'false';
+            }
+        }
+
+        function setTransportMode(mode) {
+            currentTransport = mode;
+            document.getElementById('modeInput').value = mode;
+            ['modeDriving', 'modeCycling', 'modeWalking'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('active');
+            });
+            if (mode === 'driving') document.getElementById('modeDriving')?.classList.add('active');
+            if (mode === 'cycling') document.getElementById('modeCycling')?.classList.add('active');
+            if (mode === 'walking') document.getElementById('modeWalking')?.classList.add('active');
+        }
+
+        function setAlgorithm(algo) {
+            document.getElementById('algorithmInput').value = algo;
+            const aStarBtn = document.getElementById('algoAStar');
+            const dijkstraBtn = document.getElementById('algoDijkstra');
+            if (aStarBtn) aStarBtn.classList.toggle('active', algo === 'a_star');
+            if (dijkstraBtn) dijkstraBtn.classList.toggle('active', algo === 'dijkstra');
+        }
+
+        function addWaypoint() {
+            waypointCount++;
+            const container = document.getElementById('stopsList');
+            const row = document.createElement('div');
+            row.className = 'waypoint-row';
+            row.id = `waypoint-row-${waypointCount}`;
+
+            row.innerHTML = `
+                <div class="input-wrap" style="flex: 1;">
+                    <i class="fa-solid fa-location-pin field-icon" style="color: #f59e0b;"></i>
+                    <input type="text" name="stops[]" placeholder="Stop ${waypointCount} (search address)" required oninput="handleAutocomplete(this, 'dropdown-stop-${waypointCount}')">
+                    <div class="autocomplete-dropdown" id="dropdown-stop-${waypointCount}"></div>
+                </div>
+                <button type="button" class="btn-remove-stop" onclick="removeWaypoint(${waypointCount})" title="Remove Stop">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            `;
+            container.appendChild(row);
+        }
+
+        function removeWaypoint(id) {
+            const row = document.getElementById(`waypoint-row-${id}`);
+            if (row) row.remove();
+        }
+
+        function toggleTsp(checkbox) {
+            document.getElementById('optimizeInput').value = checkbox.checked ? 'true' : 'false';
+        }
+
+        // Debounced Autocomplete
+        function handleAutocomplete(inputEl, dropdownId) {
+            clearTimeout(debounceTimer);
+            const query = inputEl.value.trim();
+            const dropdown = document.getElementById(dropdownId);
+
+            if (query.length < 2) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(query)}`);
+                    const data = await res.json();
+                    dropdown.innerHTML = '';
+
+                    if (data && data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'autocomplete-item';
+                            div.innerHTML = `
+                                <i class="fa-solid fa-location-dot"></i>
+                                <div>
+                                    <strong>${item.name}</strong><br>
+                                    <small style="color: var(--text-muted);">${item.description}</small>
+                                </div>
+                            `;
+                            div.onclick = () => {
+                                inputEl.value = item.description || item.name;
+                                dropdown.style.display = 'none';
+                            };
+                            dropdown.appendChild(div);
+                        });
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.style.display = 'none';
+                    }
+                } catch (e) {
+                    dropdown.style.display = 'none';
+                }
+            }, 250);
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.form-group') && !e.target.closest('.waypoint-row')) {
+                document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.style.display = 'none');
+            }
+        });
+
+        // Defensive GPS
+        const statusEl = document.getElementById("gpsStatus");
+        const latInput = document.getElementById("latitude");
+        const lonInput = document.getElementById("longitude");
+        const sourceInput = document.getElementById("source");
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    latInput.value = pos.coords.latitude;
+                    lonInput.value = pos.coords.longitude;
+                    statusEl.innerHTML = `<i class="fa-solid fa-circle-check" style="color: #10B981;"></i> GPS Locked (${pos.coords.latitude.toFixed(2)}, ${pos.coords.longitude.toFixed(2)})`;
+                },
+                () => {
+                    statusEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: #f59e0b;"></i> GPS unavailable. Type your starting address.`;
+                    sourceInput.placeholder = "Enter your starting address or city";
+                },
+                { enableHighAccuracy: true, timeout: 7000 }
+            );
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        }
+
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,16 @@
+2026-10-01 22:18:38,928 [INFO] [14108] =======================================================
+2026-10-01 22:18:38,929 [INFO] [14108]  SMART ROUTE OPTIMIZER - PRODUCTION SUPERVISOR ACTIVE
+2026-10-01 22:18:38,930 [INFO] [14108]  Host: 0.0.0.0 | Port: 5000 | Platform: win32
+2026-10-01 22:18:38,930 [INFO] [14108]  Auto-Restart: Enabled | Logfile: C:\Users\dell\Desktop\project1\logs\production_server.log
+2026-10-01 22:18:38,930 [INFO] [14108] =======================================================
+2026-10-01 22:18:38,930 [INFO] [14108] [Lifecycle] Launching production server instance (Run #1)...
+2026-10-01 22:18:40,814 [INFO] [14108] Starting Waitress production WSGI server on 0.0.0.0:5000 with 6 worker threads
+2026-10-01 22:18:40,818 [INFO] [14108] Serving on http://0.0.0.0:5000
+2026-10-01 22:24:48,396 [INFO] [10876] =======================================================
+2026-10-01 22:24:48,397 [INFO] [10876]  SMART ROUTE OPTIMIZER - PRODUCTION SUPERVISOR ACTIVE
+2026-10-01 22:24:48,397 [INFO] [10876]  Host: 0.0.0.0 | Port: 5000 | Platform: win32
+2026-10-01 22:24:48,397 [INFO] [10876]  Auto-Restart: Enabled | Logfile: C:\Users\dell\Desktop\project1\logs\production_server.log
+2026-10-01 22:24:48,397 [INFO] [10876] =======================================================
+2026-10-01 22:24:48,397 [INFO] [10876] [Lifecycle] Launching production server instance (Run #1)...
+2026-10-01 22:24:49,675 [INFO] [10876] Starting Waitress production WSGI server on 0.0.0.0:5000 with 6 worker threads
+2026-10-01 22:24:49,680 [INFO] [10876] Serving on http://0.0.0.0:5000

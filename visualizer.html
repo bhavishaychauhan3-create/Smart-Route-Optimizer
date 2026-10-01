@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algorithm Visualizer & Comparison Lab - Dijkstra vs A*</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        :root {
+            --bg-body: #0f172a;
+            --panel-bg: #1e293b;
+            --panel-border: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --visited-color: #3b82f6;
+            --frontier-color: #eab308;
+            --current-color: #a855f7;
+            --path-color: #22c55e;
+            --obstacle-color: #475569;
+            --node-default: #334155;
+            --start-color: #22c55e;
+            --target-color: #ef4444;
+        }
+
+        body.light-theme {
+            --bg-body: #f1f5f9;
+            --panel-bg: #ffffff;
+            --panel-border: #cbd5e1;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --node-default: #e2e8f0;
+            --obstacle-color: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* Top Navigation */
+        .navbar {
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--panel-border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .nav-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; }
+        .nav-brand i { color: var(--primary); }
+        .nav-actions { display: flex; align-items: center; gap: 12px; }
+        .btn-nav {
+            background: transparent; border: 1px solid var(--panel-border); color: var(--text-main);
+            padding: 8px 14px; border-radius: 8px; text-decoration: none; font-size: 0.85rem; font-weight: 600;
+            cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;
+        }
+        .btn-nav:hover { background: rgba(255,255,255,0.05); }
+
+        /* Main Workspace Layout */
+        .workspace { flex: 1; display: grid; grid-template-columns: 320px 1fr 340px; gap: 16px; padding: 16px; overflow: hidden; height: calc(100vh - 65px); }
+
+        /* Left Controls Panel */
+        .control-panel {
+            background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px;
+            padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+        }
+        .panel-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); font-weight: 700; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; color: var(--text-main); }
+        select, input[type="range"] {
+            padding: 8px 10px; background: var(--bg-body); border: 1px solid var(--panel-border);
+            border-radius: 6px; color: var(--text-main); font-size: 0.85rem; outline: none;
+        }
+
+        .btn-action {
+            width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: 600;
+            font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #475569; color: white; }
+        .btn-secondary:hover { background: #334155; }
+
+        .playback-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        /* Tool Mode Selection Buttons */
+        .tool-btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .btn-tool-mode {
+            padding: 8px 10px;
+            background: var(--bg-body);
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .btn-tool-mode:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+        .btn-tool-mode.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+        }
+        .tool-action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .btn-subaction {
+            padding: 7px 10px;
+            background: var(--bg-body);
+            border: 1px dashed var(--panel-border);
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+        .btn-subaction:hover {
+            color: var(--text-main);
+            border-color: var(--primary);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* Legend */
+        .legend-card { background: var(--bg-body); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; }
+        .legend-dot { width: 14px; height: 14px; border-radius: 4px; }
+
+        /* Center Grid Canvas */
+        .grid-panel {
+            background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px;
+            padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: auto; position: relative;
+        }
+
+        /* Top Header in Grid Panel */
+        .grid-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 680px;
+            margin-bottom: 8px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .point-badge-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .point-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--bg-body);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            transition: all 0.2s ease;
+        }
+        .point-pill.pill-start {
+            border-color: rgba(34, 197, 94, 0.45);
+            background: rgba(34, 197, 94, 0.1);
+        }
+        .point-pill.pill-start i { color: #22c55e; }
+        .point-pill.pill-target {
+            border-color: rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.1);
+        }
+        .point-pill.pill-target i { color: #ef4444; }
+
+        .btn-pill-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: var(--bg-body);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-pill-action:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.12);
+        }
+
+        .grid-mode-banner {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.25);
+            padding: 7px 14px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            max-width: 680px;
+            transition: all 0.2s ease;
+        }
+        .grid-mode-banner i { color: var(--primary); font-size: 0.9rem; }
+        .grid-mode-banner strong { color: var(--text-main); }
+
+        .grid-board {
+            display: grid; gap: 4px; background: rgba(0,0,0,0.1); padding: 8px; border-radius: 8px;
+            box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
+            user-select: none;
+        }
+        .grid-node {
+            width: 32px; height: 32px; border-radius: 4px; background: var(--node-default);
+            display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+            color: white; transition: background 0.15s ease, transform 0.15s ease;
+            user-select: none; cursor: pointer;
+        }
+        .grid-node.start {
+            background: #22c55e !important;
+            cursor: grab;
+            font-weight: 800;
+            font-size: 13px;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+            z-index: 2;
+        }
+        .grid-node.target {
+            background: #ef4444 !important;
+            cursor: grab;
+            font-weight: 800;
+            font-size: 13px;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+            z-index: 2;
+        }
+        .grid-node.start:hover {
+            transform: scale(1.18);
+            box-shadow: 0 0 14px rgba(34, 197, 94, 0.8);
+            z-index: 10;
+        }
+        .grid-node.target:hover {
+            transform: scale(1.18);
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.8);
+            z-index: 10;
+        }
+        .grid-node.dragging {
+            opacity: 0.35;
+            transform: scale(0.9);
+            cursor: grabbing;
+        }
+        .grid-node.drag-start-hover {
+            outline: 2px dashed #22c55e !important;
+            outline-offset: 1px;
+            background: rgba(34, 197, 94, 0.25) !important;
+            transform: scale(1.1);
+        }
+        .grid-node.drag-target-hover {
+            outline: 2px dashed #ef4444 !important;
+            outline-offset: 1px;
+            background: rgba(239, 68, 68, 0.25) !important;
+            transform: scale(1.1);
+        }
+        .grid-node.selected-endpoint {
+            outline: 3px solid #38bdf8 !important;
+            animation: pulse-ring 1s infinite alternate;
+        }
+        @keyframes pulse-ring {
+            from { transform: scale(1.05); box-shadow: 0 0 4px #38bdf8; }
+            to { transform: scale(1.18); box-shadow: 0 0 12px #38bdf8; }
+        }
+
+        .grid-node.obstacle { background: var(--obstacle-color) !important; }
+        .grid-node.frontier { background: var(--frontier-color) !important; color: #000; transform: scale(1.08); }
+        .grid-node.visited { background: var(--visited-color) !important; }
+        .grid-node.current { background: var(--current-color) !important; transform: scale(1.15); box-shadow: 0 0 10px #a855f7; }
+        .grid-node.path { background: var(--path-color) !important; transform: scale(1.1); box-shadow: 0 0 8px #22c55e; }
+
+        /* Right Stats Panel */
+        .stats-panel {
+            background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px;
+            padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;
+        }
+        .stat-card {
+            background: var(--bg-body); border: 1px solid var(--panel-border); border-radius: 8px;
+            padding: 14px; display: flex; flex-direction: column; gap: 4px;
+        }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+        .stat-value { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
+        
+        .compare-bar-container { margin-top: 10px; }
+        .bar-wrap { margin-bottom: 8px; }
+        .bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 4px; }
+        .bar-track { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 4px; }
+
+        @media(max-width: 1050px) {
+            .workspace { grid-template-columns: 1fr; height: auto; overflow: visible; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fa-solid fa-microchip"></i>
+            <span>Algorithm Visualizer & Comparison Lab</span>
+        </div>
+        <div class="nav-actions">
+            <a href="/guide" class="btn-nav"><i class="fa-solid fa-graduation-cap"></i> A* vs Dijkstra Guide</a>
+            <button class="btn-nav" onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Theme</button>
+            <a href="/" class="btn-nav"><i class="fa-solid fa-map-location-dot"></i> Road Navigation</a>
+        </div>
+    </nav>
+
+    <div class="workspace">
+        
+        <!-- Controls Panel -->
+        <div class="control-panel">
+            <div class="panel-title">Visualizer Controls</div>
+
+            <div class="form-group">
+                <label>Select Algorithm</label>
+                <select id="algoSelect">
+                    <option value="dijkstra">Dijkstra's Algorithm (Guaranteed Shortest)</option>
+                    <option value="a_star">A* Search (Haversine Heuristic)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Grid Dimensions</label>
+                <select id="gridDimSelect" onchange="generateGrid()">
+                    <option value="10x14">10 x 14 (Standard)</option>
+                    <option value="12x18">12 x 18 (Medium)</option>
+                    <option value="15x20">15 x 20 (Large)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Obstacle Density: <span id="obstacleVal">15%</span></label>
+                <input type="range" id="obstacleSlider" min="0" max="35" value="15" oninput="document.getElementById('obstacleVal').innerText = this.value + '%'" onchange="generateGrid()">
+            </div>
+
+            <!-- Start / Target Placement & Tools -->
+            <div class="form-group">
+                <label>Node Placement Tools</label>
+                <div class="tool-btn-grid">
+                    <button type="button" class="btn-tool-mode active" id="modeSelect" onclick="setGridTool('select')" title="Drag S or E directly">
+                        <i class="fa-solid fa-arrows-up-down-left-right"></i> Drag / Move
+                    </button>
+                    <button type="button" class="btn-tool-mode" id="modeStart" onclick="setGridTool('start')" title="Click any cell to move Start point">
+                        <i class="fa-solid fa-location-dot" style="color: #22c55e;"></i> Place Start
+                    </button>
+                    <button type="button" class="btn-tool-mode" id="modeTarget" onclick="setGridTool('target')" title="Click any cell to move Target point">
+                        <i class="fa-solid fa-flag-checkered" style="color: #ef4444;"></i> Place Target
+                    </button>
+                    <button type="button" class="btn-tool-mode" id="modeWall" onclick="setGridTool('wall')" title="Click or drag to toggle Wall obstacles">
+                        <i class="fa-solid fa-square" style="color: #94a3b8;"></i> Draw Wall
+                    </button>
+                </div>
+                <div class="tool-action-row">
+                    <button type="button" class="btn-subaction" onclick="swapEndpoints()" title="Swap Start and Target endpoints">
+                        <i class="fa-solid fa-arrow-right-arrow-left"></i> Swap S ↔ E
+                    </button>
+                    <button type="button" class="btn-subaction" onclick="clearWalls()" title="Clear all obstacles on grid">
+                        <i class="fa-solid fa-eraser"></i> Clear Walls
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Animation Speed: <span id="speedVal">3x</span></label>
+                <input type="range" id="speedSlider" min="1" max="10" value="3" oninput="updateSpeed(this.value)">
+            </div>
+
+            <button class="btn-action btn-primary" id="btnStart" onclick="startVisualization()">
+                <i class="fa-solid fa-play"></i> Start Visualization
+            </button>
+
+            <div class="playback-controls">
+                <button class="btn-action btn-secondary" id="btnPause" onclick="togglePause()" disabled>
+                    <i class="fa-solid fa-pause"></i> Pause
+                </button>
+                <button class="btn-action btn-secondary" onclick="resetBoard()">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </button>
+            </div>
+
+            <div class="panel-title" style="margin-top: 10px;">Color Legend</div>
+            <div class="legend-card">
+                <div class="legend-item"><div class="legend-dot" style="background: #22c55e;"></div> Start Node (Drag or Click to Move)</div>
+                <div class="legend-item"><div class="legend-dot" style="background: #ef4444;"></div> Target Node (Drag or Click to Move)</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--frontier-color);"></div> Frontier / Open Set</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--visited-color);"></div> Visited / Closed Set</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--current-color);"></div> Current Evaluating Node</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--path-color);"></div> Final Shortest Path</div>
+                <div class="legend-item"><div class="legend-dot" style="background: var(--obstacle-color);"></div> Obstacle / Barrier</div>
+            </div>
+        </div>
+
+        <!-- Grid Visualization Board -->
+        <div class="grid-panel">
+            <!-- Header bar with current endpoints and swap action -->
+            <div class="grid-header-bar">
+                <div class="point-badge-group">
+                    <span class="point-pill pill-start" title="Start Point Coordinates">
+                        <i class="fa-solid fa-location-dot"></i> Start (S): <strong id="lblStartNode">Row 0, Col 0</strong>
+                    </span>
+                    <span class="point-pill pill-target" title="Target Point Coordinates">
+                        <i class="fa-solid fa-flag-checkered"></i> Target (E): <strong id="lblTargetNode">Row 9, Col 13</strong>
+                    </span>
+                </div>
+                <button class="btn-pill-action" onclick="swapEndpoints()" title="Swap Start and Target endpoints">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i> Swap Points
+                </button>
+            </div>
+
+            <!-- Dynamic helper instruction banner -->
+            <div class="grid-mode-banner" id="gridModeBanner">
+                <i class="fa-solid fa-lightbulb"></i>
+                <span id="gridBannerText"><strong>Tip:</strong> Click and drag <strong>S</strong> (Start) or <strong>E</strong> (Target) to any cell, or select a tool on the left to place them!</span>
+            </div>
+
+            <!-- Board -->
+            <div class="grid-board" id="gridBoard"></div>
+        </div>
+
+        <!-- Side-by-Side Comparison & Stats -->
+        <div class="stats-panel">
+            <div class="panel-title">Live Execution Stats</div>
+
+            <div class="stat-card">
+                <span class="stat-label">Active Algorithm</span>
+                <span class="stat-value" id="statAlgoName">-</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">Nodes Explored</span>
+                <span class="stat-value" id="statNodesExplored">0</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">Execution Time</span>
+                <span class="stat-value" id="statExecTime">0 µs</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="stat-label">Shortest Path Distance</span>
+                <span class="stat-value" id="statDistance">0 km</span>
+            </div>
+
+            <button class="btn-action btn-primary" onclick="runSideBySideComparison()">
+                <i class="fa-solid fa-chart-simple"></i> Compare Algorithms
+            </button>
+
+            <!-- Comparison Results Box -->
+            <div id="compareResults" style="display: none;">
+                <div class="panel-title" style="margin-top: 8px;">Dijkstra vs A* Benchmark</div>
+                
+                <div class="compare-bar-container">
+                    <div class="bar-wrap">
+                        <div class="bar-label"><span>Dijkstra Nodes</span><span id="cmpDijkstraNodes">0</span></div>
+                        <div class="bar-track"><div class="bar-fill" id="cmpDijkstraBar" style="background: #3b82f6; width: 0%;"></div></div>
+                    </div>
+                    <div class="bar-wrap">
+                        <div class="bar-label"><span>A* Nodes (Heuristic)</span><span id="cmpAstarNodes">0</span></div>
+                        <div class="bar-track"><div class="bar-fill" id="cmpAstarBar" style="background: #22c55e; width: 0%;"></div></div>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="margin-top: 10px; background: rgba(34, 197, 94, 0.1); border-color: #22c55e;">
+                    <span class="stat-label" style="color: #22c55e;">Exploration Reduction</span>
+                    <span class="stat-value" id="cmpEfficiency" style="color: #22c55e;">0%</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let gridData = null;
+        let animationSteps = [];
+        let currentStepIdx = 0;
+        let isPlaying = false;
+        let isPaused = false;
+        let animationTimer = null;
+        let speedInterval = 40; // ms per step
+
+        // Endpoint and obstacle state
+        let startNodeId = "N_0_0";
+        let targetNodeId = "N_9_13";
+        let obstacleSet = new Set();
+        let currentTool = "select"; // "select", "start", "target", "wall"
+        let selectedNodeToMove = null; // Used for click-to-move endpoint
+        let draggedEndpoint = null; // "start" or "target" during drag & drop
+        let isMouseDown = false;
+        let wallDrawAction = "add"; // "add" or "remove" when dragging over cells in wall mode
+        let currentSeed = 42;
+
+        function updateSpeed(val) {
+            document.getElementById('speedVal').innerText = val + 'x';
+            speedInterval = Math.max(8, Math.round(120 / val));
+        }
+
+        function formatNodeLabel(nodeId) {
+            if (!nodeId) return "-";
+            const parts = nodeId.split('_');
+            if (parts.length === 3) {
+                return `Row ${parts[1]}, Col ${parts[2]}`;
+            }
+            return nodeId;
+        }
+
+        function updateEndpointBadges() {
+            const lblStart = document.getElementById('lblStartNode');
+            const lblTarget = document.getElementById('lblTargetNode');
+            if (lblStart) lblStart.innerText = formatNodeLabel(startNodeId);
+            if (lblTarget) lblTarget.innerText = formatNodeLabel(targetNodeId);
+        }
+
+        function setGridTool(tool) {
+            currentTool = tool;
+            selectedNodeToMove = null;
+
+            // Update button styles
+            ['modeSelect', 'modeStart', 'modeTarget', 'modeWall'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.classList.remove('active');
+            });
+
+            const bannerText = document.getElementById('gridBannerText');
+            if (tool === 'select') {
+                document.getElementById('modeSelect')?.classList.add('active');
+                bannerText.innerHTML = '<strong>Drag & Drop Mode:</strong> Drag <strong>S</strong> (Start) or <strong>E</strong> (Target) to any cell, or click S/E to reposition!';
+            } else if (tool === 'start') {
+                document.getElementById('modeStart')?.classList.add('active');
+                bannerText.innerHTML = '<strong style="color: #22c55e;">Place Start Node:</strong> Click any cell on the grid to place the green Start (S) point.';
+            } else if (tool === 'target') {
+                document.getElementById('modeTarget')?.classList.add('active');
+                bannerText.innerHTML = '<strong style="color: #ef4444;">Place Target Node:</strong> Click any cell on the grid to place the red Target (E) point.';
+            } else if (tool === 'wall') {
+                document.getElementById('modeWall')?.classList.add('active');
+                bannerText.innerHTML = '<strong>Draw / Erase Walls:</strong> Click or drag across cells to add or remove obstacle barriers.';
+            }
+
+            renderBoardFromState();
+        }
+
+        function swapEndpoints() {
+            clearVisualizationTrace();
+            const temp = startNodeId;
+            startNodeId = targetNodeId;
+            targetNodeId = temp;
+            obstacleSet.delete(startNodeId);
+            obstacleSet.delete(targetNodeId);
+
+            updateEndpointBadges();
+            renderBoardFromState();
+
+            const bannerText = document.getElementById('gridBannerText');
+            if (bannerText) {
+                bannerText.innerHTML = `<strong>Swapped Endpoints!</strong> Start is now <strong>${formatNodeLabel(startNodeId)}</strong> and Target is <strong>${formatNodeLabel(targetNodeId)}</strong>.`;
+            }
+        }
+
+        function clearWalls() {
+            clearVisualizationTrace();
+            obstacleSet.clear();
+            renderBoardFromState();
+            const bannerText = document.getElementById('gridBannerText');
+            if (bannerText) {
+                bannerText.innerHTML = `<strong>Walls cleared!</strong> The grid now has open passage between all cells.`;
+            }
+        }
+
+        async function generateGrid() {
+            resetBoard();
+            const [rows, cols] = document.getElementById('gridDimSelect').value.split('x').map(Number);
+            const obstacleRatio = parseFloat(document.getElementById('obstacleSlider').value) / 100.0;
+            const algo = document.getElementById('algoSelect').value;
+
+            // Validate that current start and target points fit in the new dimensions
+            const startParts = startNodeId ? startNodeId.split('_') : [];
+            const targetParts = targetNodeId ? targetNodeId.split('_') : [];
+            let sRow = (startParts.length === 3) ? parseInt(startParts[1]) : 0;
+            let sCol = (startParts.length === 3) ? parseInt(startParts[2]) : 0;
+            let tRow = (targetParts.length === 3) ? parseInt(targetParts[1]) : rows - 1;
+            let tCol = (targetParts.length === 3) ? parseInt(targetParts[2]) : cols - 1;
+
+            if (sRow >= rows || sCol >= cols) {
+                sRow = 0; sCol = 0;
+            }
+            if (tRow >= rows || tCol >= cols) {
+                tRow = rows - 1; tCol = cols - 1;
+            }
+            if (sRow === tRow && sCol === tCol) {
+                sRow = 0; sCol = 0;
+                tRow = rows - 1; tCol = cols - 1;
+            }
+
+            startNodeId = `N_${sRow}_${sCol}`;
+            targetNodeId = `N_${tRow}_${tCol}`;
+
+            const response = await fetch('/api/visualize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    algorithm: algo,
+                    rows,
+                    cols,
+                    obstacle_ratio: obstacleRatio,
+                    seed: currentSeed,
+                    start_node: startNodeId,
+                    target_node: targetNodeId
+                })
+            });
+
+            gridData = await response.json();
+            startNodeId = gridData.start_node;
+            targetNodeId = gridData.target_node;
+
+            // Load obstacles from response
+            obstacleSet.clear();
+            gridData.grid_nodes.forEach(node => {
+                if (node.is_obstacle && node.id !== startNodeId && node.id !== targetNodeId) {
+                    obstacleSet.add(node.id);
+                }
+            });
+
+            updateEndpointBadges();
+            renderBoardFromState();
+        }
+
+        function renderBoardFromState() {
+            if (!gridData) return;
+            const board = document.getElementById('gridBoard');
+            board.style.gridTemplateColumns = `repeat(${gridData.cols}, 32px)`;
+            board.innerHTML = '';
+
+            for (let r = 0; r < gridData.rows; r++) {
+                for (let c = 0; c < gridData.cols; c++) {
+                    const nodeId = `N_${r}_${c}`;
+                    const el = document.createElement('div');
+                    el.className = 'grid-node';
+                    el.id = `node-${nodeId}`;
+                    el.dataset.id = nodeId;
+                    el.dataset.row = r;
+                    el.dataset.col = c;
+
+                    if (nodeId === startNodeId) {
+                        el.classList.add('start');
+                        el.innerText = 'S';
+                        el.title = `Start Node (${formatNodeLabel(nodeId)}) - Drag to move or click to select`;
+                        el.setAttribute('draggable', 'true');
+                        if (selectedNodeToMove === 'start') {
+                            el.classList.add('selected-endpoint');
+                        }
+                    } else if (nodeId === targetNodeId) {
+                        el.classList.add('target');
+                        el.innerText = 'E';
+                        el.title = `Target Node (${formatNodeLabel(nodeId)}) - Drag to move or click to select`;
+                        el.setAttribute('draggable', 'true');
+                        if (selectedNodeToMove === 'target') {
+                            el.classList.add('selected-endpoint');
+                        }
+                    } else if (obstacleSet.has(nodeId)) {
+                        el.classList.add('obstacle');
+                        el.title = `Obstacle Wall (${formatNodeLabel(nodeId)})`;
+                    } else {
+                        el.title = formatNodeLabel(nodeId);
+                    }
+
+                    // Attach Drag & Drop Listeners
+                    el.addEventListener('dragstart', handleDragStart);
+                    el.addEventListener('dragend', handleDragEnd);
+                    el.addEventListener('dragover', handleDragOver);
+                    el.addEventListener('dragleave', handleDragLeave);
+                    el.addEventListener('drop', handleDrop);
+
+                    // Attach Click & Mouse Listeners
+                    el.addEventListener('mousedown', (e) => handleNodeMouseDown(e, nodeId));
+                    el.addEventListener('mouseenter', (e) => handleNodeMouseEnter(e, nodeId));
+
+                    board.appendChild(el);
+                }
+            }
+        }
+
+        // --- Drag & Drop Handlers ---
+        function handleDragStart(e) {
+            const nodeId = e.currentTarget.dataset.id;
+            if (nodeId === startNodeId) {
+                draggedEndpoint = "start";
+                e.dataTransfer.setData('text/plain', 'start');
+                e.currentTarget.classList.add('dragging');
+            } else if (nodeId === targetNodeId) {
+                draggedEndpoint = "target";
+                e.dataTransfer.setData('text/plain', 'target');
+                e.currentTarget.classList.add('dragging');
+            } else {
+                e.preventDefault();
+                return;
+            }
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            draggedEndpoint = null;
+            document.querySelectorAll('.grid-node').forEach(node => {
+                node.classList.remove('drag-start-hover', 'drag-target-hover');
+            });
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (draggedEndpoint === 'start') {
+                e.currentTarget.classList.add('drag-start-hover');
+            } else if (draggedEndpoint === 'target') {
+                e.currentTarget.classList.add('drag-target-hover');
+            }
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-start-hover', 'drag-target-hover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('drag-start-hover', 'drag-target-hover');
+            const targetCellId = e.currentTarget.dataset.id;
+            if (!targetCellId || !draggedEndpoint) return;
+
+            clearVisualizationTrace();
+
+            if (draggedEndpoint === 'start') {
+                if (targetCellId === targetNodeId) {
+                    // Swapping start and target
+                    targetNodeId = startNodeId;
+                }
+                startNodeId = targetCellId;
+                obstacleSet.delete(startNodeId);
+            } else if (draggedEndpoint === 'target') {
+                if (targetCellId === startNodeId) {
+                    // Swapping start and target
+                    startNodeId = targetNodeId;
+                }
+                targetNodeId = targetCellId;
+                obstacleSet.delete(targetNodeId);
+            }
+
+            draggedEndpoint = null;
+            updateEndpointBadges();
+            renderBoardFromState();
+
+            const bannerText = document.getElementById('gridBannerText');
+            if (bannerText) {
+                bannerText.innerHTML = `<strong>Endpoints Updated!</strong> Start is <strong>${formatNodeLabel(startNodeId)}</strong> and Target is <strong>${formatNodeLabel(targetNodeId)}</strong>.`;
+            }
+        }
+
+        // --- Click & Mouse Wall-Drawing Handlers ---
+        document.addEventListener('mouseup', () => {
+            isMouseDown = false;
+        });
+
+        function handleNodeMouseDown(e, nodeId) {
+            isMouseDown = true;
+            clearVisualizationTrace();
+
+            if (currentTool === 'start') {
+                if (nodeId === targetNodeId) {
+                    targetNodeId = startNodeId;
+                }
+                startNodeId = nodeId;
+                obstacleSet.delete(startNodeId);
+                updateEndpointBadges();
+                setGridTool('select');
+                return;
+            }
+
+            if (currentTool === 'target') {
+                if (nodeId === startNodeId) {
+                    startNodeId = targetNodeId;
+                }
+                targetNodeId = nodeId;
+                obstacleSet.delete(targetNodeId);
+                updateEndpointBadges();
+                setGridTool('select');
+                return;
+            }
+
+            if (currentTool === 'wall') {
+                if (nodeId !== startNodeId && nodeId !== targetNodeId) {
+                    if (obstacleSet.has(nodeId)) {
+                        obstacleSet.delete(nodeId);
+                        wallDrawAction = 'remove';
+                    } else {
+                        obstacleSet.add(nodeId);
+                        wallDrawAction = 'add';
+                    }
+                    renderBoardFromState();
+                }
+                return;
+            }
+
+            // Default 'select' / 'drag' tool behavior:
+            if (selectedNodeToMove === 'start') {
+                if (nodeId === targetNodeId) {
+                    targetNodeId = startNodeId;
+                }
+                startNodeId = nodeId;
+                obstacleSet.delete(startNodeId);
+                selectedNodeToMove = null;
+                updateEndpointBadges();
+                renderBoardFromState();
+                return;
+            }
+
+            if (selectedNodeToMove === 'target') {
+                if (nodeId === startNodeId) {
+                    startNodeId = targetNodeId;
+                }
+                targetNodeId = nodeId;
+                obstacleSet.delete(targetNodeId);
+                selectedNodeToMove = null;
+                updateEndpointBadges();
+                renderBoardFromState();
+                return;
+            }
+
+            if (nodeId === startNodeId) {
+                selectedNodeToMove = 'start';
+                document.getElementById('gridBannerText').innerHTML = '<strong style="color: #22c55e;">Start Node Selected:</strong> Click any cell to place it there, or drag it!';
+                renderBoardFromState();
+                return;
+            }
+
+            if (nodeId === targetNodeId) {
+                selectedNodeToMove = 'target';
+                document.getElementById('gridBannerText').innerHTML = '<strong style="color: #ef4444;">Target Node Selected:</strong> Click any cell to place it there, or drag it!';
+                renderBoardFromState();
+                return;
+            }
+
+            // Clicking an empty or obstacle node in select mode toggles wall
+            if (nodeId !== startNodeId && nodeId !== targetNodeId) {
+                if (obstacleSet.has(nodeId)) {
+                    obstacleSet.delete(nodeId);
+                    wallDrawAction = 'remove';
+                } else {
+                    obstacleSet.add(nodeId);
+                    wallDrawAction = 'add';
+                }
+                renderBoardFromState();
+            }
+        }
+
+        function handleNodeMouseEnter(e, nodeId) {
+            if (!isMouseDown) return;
+            if (nodeId === startNodeId || nodeId === targetNodeId) return;
+
+            if (currentTool === 'wall' || (currentTool === 'select' && !selectedNodeToMove && !draggedEndpoint)) {
+                if (wallDrawAction === 'add') {
+                    obstacleSet.add(nodeId);
+                } else {
+                    obstacleSet.delete(nodeId);
+                }
+                renderBoardFromState();
+            }
+        }
+
+        function clearVisualizationTrace() {
+            clearTimeout(animationTimer);
+            isPlaying = false;
+            isPaused = false;
+            document.getElementById('btnStart').disabled = false;
+            document.getElementById('btnPause').disabled = true;
+            document.getElementById('btnPause').innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+
+            // Remove animation classes while keeping endpoints and obstacles
+            document.querySelectorAll('.grid-node').forEach(el => {
+                el.classList.remove('frontier', 'visited', 'current', 'path');
+            });
+            document.getElementById('statNodesExplored').innerText = '0';
+        }
+
+        async function startVisualization() {
+            if (!gridData) {
+                await generateGrid();
+            }
+
+            clearVisualizationTrace();
+
+            const algo = document.getElementById('algoSelect').value;
+            const [rows, cols] = document.getElementById('gridDimSelect').value.split('x').map(Number);
+            const obstacleRatio = parseFloat(document.getElementById('obstacleSlider').value) / 100.0;
+
+            // Fetch fresh steps with exact custom start, target, and obstacles
+            const response = await fetch('/api/visualize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    algorithm: algo,
+                    rows,
+                    cols,
+                    obstacle_ratio: obstacleRatio,
+                    seed: currentSeed,
+                    start_node: startNodeId,
+                    target_node: targetNodeId,
+                    obstacles: Array.from(obstacleSet)
+                })
+            });
+            gridData = await response.json();
+            animationSteps = gridData.steps;
+
+            // Update stats
+            document.getElementById('statAlgoName').innerText = algo === 'a_star' ? 'A* Search' : "Dijkstra's Algorithm";
+            document.getElementById('statExecTime').innerText = gridData.execution_time_us + ' µs';
+            document.getElementById('statDistance').innerText = (gridData.distance === null || gridData.distance === Infinity) ? 'No Path' : gridData.distance + ' km';
+
+            currentStepIdx = 0;
+            isPlaying = true;
+            isPaused = false;
+            document.getElementById('btnPause').disabled = false;
+            document.getElementById('btnStart').disabled = true;
+
+            playNextStep();
+        }
+
+        function playNextStep() {
+            if (!isPlaying || isPaused) return;
+
+            if (currentStepIdx >= animationSteps.length) {
+                isPlaying = false;
+                document.getElementById('btnStart').disabled = false;
+                document.getElementById('btnPause').disabled = true;
+                return;
+            }
+
+            const step = animationSteps[currentStepIdx];
+            const el = document.getElementById(`node-${step.node}`);
+
+            if (el && !el.classList.contains('start') && !el.classList.contains('target')) {
+                if (step.action === 'frontier') {
+                    el.classList.add('frontier');
+                } else if (step.action === 'visited') {
+                    el.classList.remove('frontier');
+                    el.classList.add('visited');
+                } else if (step.action === 'current') {
+                    el.classList.add('current');
+                    setTimeout(() => el.classList.remove('current'), speedInterval);
+                } else if (step.action === 'path') {
+                    el.classList.remove('visited', 'frontier');
+                    el.classList.add('path');
+                }
+            }
+
+            document.getElementById('statNodesExplored').innerText = currentStepIdx + 1;
+            currentStepIdx++;
+            animationTimer = setTimeout(playNextStep, speedInterval);
+        }
+
+        function togglePause() {
+            const btn = document.getElementById('btnPause');
+            if (isPaused) {
+                isPaused = false;
+                btn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+                playNextStep();
+            } else {
+                isPaused = true;
+                clearTimeout(animationTimer);
+                btn.innerHTML = '<i class="fa-solid fa-play"></i> Resume';
+            }
+        }
+
+        function resetBoard() {
+            clearVisualizationTrace();
+            renderBoardFromState();
+        }
+
+        async function runSideBySideComparison() {
+            const [rows, cols] = document.getElementById('gridDimSelect').value.split('x').map(Number);
+            const obstacleRatio = parseFloat(document.getElementById('obstacleSlider').value) / 100.0;
+
+            const response = await fetch('/api/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rows,
+                    cols,
+                    obstacle_ratio: obstacleRatio,
+                    seed: currentSeed,
+                    start_node: startNodeId,
+                    target_node: targetNodeId,
+                    obstacles: Array.from(obstacleSet)
+                })
+            });
+
+            const data = await response.json();
+            document.getElementById('compareResults').style.display = 'block';
+
+            const dNodes = data.dijkstra.nodes_explored;
+            const aNodes = data.a_star.nodes_explored;
+            const maxNodes = Math.max(dNodes, aNodes) || 1;
+
+            document.getElementById('cmpDijkstraNodes').innerText = `${dNodes} nodes (${data.dijkstra.execution_time_us} µs)`;
+            document.getElementById('cmpAstarNodes').innerText = `${aNodes} nodes (${data.a_star.execution_time_us} µs)`;
+            document.getElementById('cmpDijkstraBar').style.width = `${(dNodes / maxNodes) * 100}%`;
+            document.getElementById('cmpAstarBar').style.width = `${(aNodes / maxNodes) * 100}%`;
+            document.getElementById('cmpEfficiency').innerText = `${data.comparison.efficiency_gain_percent}% Fewer Nodes`;
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', document.body.classList.contains('light-theme') ? 'light' : 'dark');
+        }
+
+        window.onload = () => {
+            if (localStorage.getItem('theme') === 'light') {
+                document.body.classList.add('light-theme');
+            }
+            generateGrid();
+        };
+    </script>
+</body>
+</html>

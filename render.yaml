@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: smart-route-optimizer
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --config gunicorn.conf.py app:app
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_GET_THREADS
+        value: "2"
+      - key: WEB_CONCURRENCY
+        value: "3"
